@@ -4,7 +4,6 @@ etl, sql, python, sqlite, automation
 
 ETL: Daily ETL → load to SQLite, weekly report in 5 min
 
-```md
 ## 실행 방법
 ```bash
 pip install -r requirements.txt
