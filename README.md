@@ -8,3 +8,7 @@ ETL: Daily ETL → load to SQLite, weekly report in 5 min
 ```bash
 pip install -r requirements.txt
 python etl.py
+
+## 결과
+- etl.py 실행 시 data/ 폴더에 CSV 자동 생성
+- load_to_sqlite.py로 CSV를 SQLite DB(data/app.db)의 logs 테이블에 적재 확인
