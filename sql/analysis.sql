@@ -1,2 +1,2 @@
--- Day1 자리 파일 (내일 실제 쿼리 넣기)
-SELECT 'placeholder' AS msg;
+SELECT COUNT(*) AS rows FROM logs;
+SELECT SUM(value) AS sum_value, AVG(value) AS avg_value FROM logs;
