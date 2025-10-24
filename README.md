@@ -35,24 +35,30 @@ logs_road(
 )
 
 자동화(선택, 작업 스케줄러)
-매일 06:50 실행 예:
-# run_etl.ps1
-$ErrorActionPreference = 'Stop'
-Set-Location $env:USERPROFILE\Desktop\project-etl-sql
-py etl.py
-py load_to_sqlite.py
-
+스크립트: run_etl.ps1
+등록:
+schtasks /Create /SC DAILY /ST 06:50 /TN "Road ETL daily" ^
+  /TR "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ""%USERPROFILE%\Desktop\project-etl-sql\run_etl.ps1""" ^
+  /RL LIMITED
 
 작업 스케줄러 → 동작 인수:
 -ExecutionPolicy Bypass -File "C:\Users\USER\Desktop\project-etl-sql\run_etl.ps1"
 
 트러블슈팅
-EDA에서 no such table: logs_road
-→ EDA가 다른 DB를 여는 중. EDA의 data/app.db로 경로 통일.
-unable to open database file
-→ 경로/부모 폴더 없음. project-eda-dashboard\data\app.db 존재 확인.
-AM/PM 카드가 비어 있음
-→ 최근 n일에 07–09/17–19 데이터가 없을 수 있음. 샘플 재생성 후 적재.
+EDA에서 no such table: logs_road → EDA가 다른 DB를 여는 중. EDA의 data/app.db로 통일.
+unable to open database file → 경로/부모 폴더 확인. project-eda-dashboard\data\app.db 존재 확인.
+"@ | Set-Content .\README.md -Encoding UTF8
+git add README.md
+git commit -m "docs(etl): usage, schedule, troubleshooting"
+git push
+
+---
+
+### 마지막 빠른 점검(선택)
+```powershell
+# 대시보드 실행 → 화면에서 Using DB 경로 확인
+cd $EDA
+py -m streamlit run app/app.py
 
 라이선스
 교육/데모 목적. 실제 운영 전에는 데이터 출처(T-DATA/TOPIS) 약관 확인.
