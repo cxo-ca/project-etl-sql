@@ -4,6 +4,8 @@
 [![Pandas](https://img.shields.io/badge/Pandas-ETL-blue?logo=pandas)]()
 [![SQLite](https://img.shields.io/badge/SQLite-db-blue?logo=sqlite)]()
 [![Last Commit](https://img.shields.io/github/last-commit/cxo-ca/project-etl-sql)]()
+![Issues](https://img.shields.io/github/issues/cxo-ca/project-etl-sql)
+![Stars](https://img.shields.io/github/stars/cxo-ca/project-etl-sql)
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
 수집(Extract) → 정제/표준화(Transform) → SQLite 적재(Load).  
