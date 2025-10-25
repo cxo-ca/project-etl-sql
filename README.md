@@ -1,5 +1,11 @@
 # 서울 출퇴근 도로속도 ETL (SQLite)
 
+[![Python](https://img.shields.io/badge/Python-3.x-informational?logo=python)]()
+[![Pandas](https://img.shields.io/badge/Pandas-ETL-blue?logo=pandas)]()
+[![SQLite](https://img.shields.io/badge/SQLite-db-blue?logo=sqlite)]()
+[![Last Commit](https://img.shields.io/github/last-commit/cxo-ca/project-etl-sql)]()
+[![License](https://img.shields.io/badge/license-MIT-green)]()
+
 수집(Extract) → 정제/표준화(Transform) → SQLite 적재(Load).  
 결과는 **EDA 레포의 `data/app.db`** 에 누적되어 대시보드에서 사용됩니다.
 
