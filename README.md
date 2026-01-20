@@ -21,11 +21,13 @@ pip install -r requirements.txt
 ```
 
 ### 2) 실행 (샘플 데이터 생성 → DB 적재)
-#### 1) 샘플 생성(AM 08시/PM 18시, 30~60 km/h)
+```
+# 1) 샘플 생성(AM 08시/PM 18시, 30~60 km/h)
 py etl.py
 
-#### 2) 표준 스키마로 적재(logs_road 누적 + 중복 제거)
+# 2) 표준 스키마로 적재(logs_road 누적 + 중복 제거)
 py load_to_sqlite.py
+```
 
 #### 3) 결과 확인(로컬)
 - load_to_sqlite.py에서 지정한 경로에 app.db가 생성/갱신됩니다.
