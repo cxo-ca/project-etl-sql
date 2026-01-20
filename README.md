@@ -18,8 +18,9 @@
 ### 1) 설치
 ```bash
 pip install -r requirements.txt
+```
 
-### 2) 실행 (샘플 데이터 생성 → DB 적재)
+2) 실행 (샘플 데이터 생성 → DB 적재)
 # 1) 샘플 생성(AM 08시/PM 18시, 30~60 km/h)
 py etl.py
 
