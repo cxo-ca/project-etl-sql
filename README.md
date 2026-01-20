@@ -107,8 +107,8 @@ schtasks /Create /SC DAILY /ST 06:50 /TN "Road ETL daily" ^
   - DB 경로/부모 폴더를 확인하세요. project-eda-dashboard\data\app.db 경로가 실제로 존재해야 합니다.
 
 ## 마지막 빠른 점검(선택)
-# 대시보드 실행 → 화면에서 Using DB 경로 확인
 ```
+# 대시보드 실행 → 화면에서 Using DB 경로 확인
 cd $EDA
 py -m streamlit run app/app.py
 ```
