@@ -6,9 +6,8 @@ EDA 레포의 data/app.db 에 업서트(중복이면 업데이트)합니다.
 import os, glob, sqlite3
 import pandas as pd
 
-# ▶▶ EDA 쪽 DB로 고정 (Windows Desktop 기준)
-HOME = os.path.expanduser("~")
-DB = os.path.join(HOME, "Desktop", "project-eda-dashboard", "data", "app.db")
+# ▶▶ DB 경로: 환경변수(APP_DB_PATH) 우선, 없으면 로컬 기본값
+DB = os.getenv('APP_DB_PATH', os.path.join('.', 'data', 'app.db'))
 os.makedirs(os.path.dirname(DB), exist_ok=True)
 
 def normalize(df: pd.DataFrame) -> pd.DataFrame:
