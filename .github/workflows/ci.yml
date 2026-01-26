@@ -27,7 +27,6 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Run ETL (smoke)
         env:
-          # CI에는 EDA 레포 경로가 없으므로, 레포 내부 임시 DB로 검증
           APP_DB_PATH: ./data/app.db
         run: |
           python etl.py
