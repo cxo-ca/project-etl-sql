@@ -9,11 +9,11 @@
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
 수집(Extract) → 정제/표준화(Transform) → SQLite 적재(Load).  
-결과는 **EDA 레포의 `data/app.db`** 에 누적되어 대시보드에서 사용됩니다.
+결과는 **EDA 레포의 `data/app.db`** 에 누적되어 대시보드에서 사용됩니다. :contentReference[oaicite:6]{index=6}
 
 ---
 
-## Quickstart (3분 내 실행)
+## Quickstart (3분 내 실행) :contentReference[oaicite:7]{index=7}
 
 ### 1) 설치
 ```bash
@@ -29,9 +29,9 @@ py etl.py
 py load_to_sqlite.py
 ```
 
-#### 3) 결과 확인(로컬)
-- load_to_sqlite.py에서 지정한 경로에 app.db가 생성/갱신됩니다.
-- DB 내 logs_road 테이블에 데이터가 누적됩니다.
+### 3) 결과 확인(로컬)
+- 지정한 DB 파일(app.db)이 생성/갱신됩니다.
+- DB 내 logs_road 테이블에 데이터가 누적됩니다
 
 ## Results (무엇이 만들어지나)
 ### Output
@@ -40,8 +40,7 @@ py load_to_sqlite.py
 
 ### Expected behavior
 - 실행할 때마다 logs_road에 누적 적재됩니다.
-- 중복 행이 있으면 제거됩니다.
-- EDA 대시보드는 동일한 DB(data/app.db)를 열어 시각화에 사용합니다.
+- (date, hour) 유니크 키 기준으로 중복은 업데이트됩니다(업서트).
 
 ### Quick sanity check (optional)
 ```
@@ -55,28 +54,21 @@ ORDER BY date DESC, hour DESC
 LIMIT 10;
 ```
 
-## 출력 DB (단일 경로로 통일)
-- Windows 예: C:\Users\USER\Desktop\project-eda-dashboard\data\app.db
-- load_to_sqlite.py 상단 경로 예시:
+## 환경변수: APP_DB_PATH (중요)
+ETL이 적재할 SQLite DB 경로는 APP_DB_PATH로 제어하는 것을 권장합니다.
+
+### 로컬에서 같이 쓸 때(기본: EDA 레포 내부 DB를 바라보기)
+레포 루트에 .env를 만들고(커밋 금지):
 ```
-import os
-
-HOME = os.path.expanduser("~")
-DB = os.path.join(HOME, "Desktop", "project-eda-dashboard", "data", "app.db")
-os.makedirs(os.path.dirname(DB), exist_ok=True)
+APP_DB_PATH=../project-eda-dashboard/data/app.db
+```
+### ETL 레포 내부에 DB를 둘 때(단독 실행)
+```
+APP_DB_PATH=./data/app.db
 ```
 
-팁: EDA 레포와 ETL 레포가 서로 다른 DB 파일을 가리키면, 대시보드에서 no such table: logs_road가 발생합니다.
-반드시 EDA의 data/app.db로 통일하세요.
-
-## 폴더 구조
-project-etl-sql/  
- ├─ etl.py               # 샘플/원천 데이터 수집 (CSV 생성)  
- ├─ load_to_sqlite.py    # CSV → 표준 스키마 변환 후 logs_road 적재  
- ├─ data/  
- │   ├─ raw/             # 원본 CSV 저장(옵션)  
- │   └─ sample_*.csv     # 예시 생성물  
- └─ logs/                # 스케줄 실행 로그(옵션)
+(중요) 상대경로는 ‘현재 실행하는 레포(ETL)’ 기준 입니다.
+즉, ETL 레포에서 APP_DB_PATH=../project-eda-dashboard/data/app.db라면 “ETL 폴더 기준으로 한 단계 위로 가서 EDA 폴더의 DB를 가리킨다”는 뜻입니다.
 
 ## 표준 스키마
 ```
@@ -92,28 +84,16 @@ logs_road(
 
 ### 등록 예시
 ```
-schtasks /Create /SC DAILY /ST 06:50 /TN "Road ETL daily" ^
+schtasks /Create /SC DAILY /ST 06:50 /TN 'Road ETL daily' ^
   /TR "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ""%USERPROFILE%\Desktop\project-etl-sql\run_etl.ps1""" ^
   /RL LIMITED
 ```
 
-### 작업 스케줄러 → 동작 인수 예시
-```
--ExecutionPolicy Bypass -File "C:\Users\USER\Desktop\project-etl-sql\run_etl.ps1"
-```
-
 ## 트러블슈팅
 - EDA에서 no such table: logs_road
-  - EDA가 다른 DB를 여는 중입니다. EDA의 data/app.db로 통일하세요.
+  - 대시보드가 다른 DB 파일을 열고 있는 상태입니다. APP_DB_PATH(ETL)와 대시보드의 DB 경로가 같은 파일을 가리키게 통일하세요.
 - unable to open database file
-  - DB 경로/부모 폴더를 확인하세요. project-eda-dashboard\data\app.db 경로가 실제로 존재해야 합니다.
-
-## 마지막 빠른 점검(선택)
-```
-# 대시보드 실행 → 화면에서 Using DB 경로 확인
-cd $EDA
-py -m streamlit run app/app.py
-```
+  - DB 경로/부모 폴더 존재 여부를 확인하세요.
 
 ## 라이선스 / 주의사항
-교육/데모 목적. 실제 운영 전에는 데이터 출처(T-DATA/TOPIS) 약관 확인.
+교육/데모 목적. 실제 운영 전에는 데이터 출처 약관을 확인하세요.
