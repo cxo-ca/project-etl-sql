@@ -1,14 +1,16 @@
-# -*- coding: utf-8 -*-
 """
 CSV(또는 유사 스키마)를 읽어 표준 스키마 logs_road(date,hour,speed)로
 EDA 레포의 data/app.db 에 업서트(중복이면 업데이트)합니다.
 """
-import os, glob, sqlite3
+import glob
+import os
+import sqlite3
+
 import pandas as pd
 
 # ▶▶ DB 경로: 환경변수(APP_DB_PATH) 우선, 없으면 로컬 기본값
 DB = os.getenv('APP_DB_PATH', os.path.join('.', 'data', 'app.db'))
-os.makedirs(os.path.dirname(DB), exist_ok=True)
+os.makedirs(os.path.dirname(os.path.abspath(DB)), exist_ok=True)
 
 def normalize(df: pd.DataFrame) -> pd.DataFrame:
     """다양한 입력 컬럼을 표준 컬럼(date,hour,speed)로 통일"""
@@ -69,10 +71,10 @@ def read_csv_flex(path: str) -> pd.DataFrame:
             return pd.read_csv(path, encoding=enc)
         except UnicodeDecodeError:
             continue
-        except Exception:
+        except (OSError, ValueError):
             break
     # 최후: 무시하고 읽기
-    return pd.read_csv(path, encoding="cp949", errors="ignore")
+    return pd.read_csv(path, encoding="cp949", encoding_errors="ignore")
 
 def main():
     files = sorted(glob.glob("data/*.csv") + glob.glob("data/raw/*.csv"))
@@ -81,10 +83,12 @@ def main():
 
     total_new = 0
     with sqlite3.connect(DB) as con:
+        # 최초 실행 또는 유효한 입력 행이 없는 경우에도 통계 조회가 가능하게 합니다.
+        upsert(con, [])
         for fp in files:
             try:
                 df = read_csv_flex(fp)
-            except Exception as e:
+            except (OSError, ValueError) as e:
                 print(f"[ERR] read {fp}: {e}")
                 continue
 

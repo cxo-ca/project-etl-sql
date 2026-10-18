@@ -12,5 +12,4 @@ lint:
 	$(PY) -m ruff check .
 
 test:
-	$(PY) -m pip install pytest
-	$(PY) -m pytest -q
+	$(PY) -m unittest discover -s tests -v

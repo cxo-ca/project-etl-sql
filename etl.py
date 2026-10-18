@@ -1,6 +1,11 @@
 from __future__ import annotations
-import os, time, math, requests, pandas as pd
+
+import os
+import time
 from datetime import datetime
+
+import pandas as pd
+import requests
 
 TODAY = datetime.now().strftime("%Y%m%d")
 RAW_DIR = "data/raw"
@@ -50,7 +55,7 @@ def fetch_page(page:int) -> pd.DataFrame:
             s = "".join([ch for ch in s if ch.isdigit()])
             if len(s) >= 2: s = s[-2:]  # 뒤 2자리 채택
             try: return int(s)
-            except: return None
+            except (TypeError, ValueError): return None
         df["hour"] = df["hour"].map(norm_hour)
 
     # date 표준화(yyyymmdd)
@@ -84,7 +89,7 @@ def main():
         print(f"[OK] saved {len(df)} rows -> {out}")
     except requests.HTTPError as e:
         print("[HTTP ERROR]", e)
-    except Exception as e:
+    except (requests.RequestException, ValueError, TypeError, OSError, KeyError) as e:
         print("[ERROR]", e)
 
 if __name__ == "__main__":
