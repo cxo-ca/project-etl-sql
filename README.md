@@ -1,144 +1,99 @@
 # 서울 출퇴근 도로속도 ETL
 
-CSV 데이터를 분석용 스키마로 정규화하고 SQLite에 적재하는 Python 실습 프로젝트입니다. 적재한 데이터는 [Streamlit EDA 대시보드](https://github.com/cxo-ca/project-eda-dashboard)에서 AM/PM 평균속도 지표로 확인할 수 있습니다.
+**서로 다른 CSV 형식을 `date / hour / speed`로 통일하고, SQLite에 중복 없이 갱신 적재하는 개인 프로젝트입니다.**
 
-## 현재 구현 범위
+`Python` · `Pandas` · `SQL` · `SQLite` · `unittest`
 
-| 구성 | 동작 | 상태 |
+[적재 코드](load_to_sqlite.py) · [회귀 테스트 6개](tests/test_loader.py) · [연결 대시보드](https://github.com/cxo-ca/project-eda-dashboard)
+
+## 핵심 구현
+
+| 해결할 문제 | 구현한 처리 | 확인할 코드 |
 |---|---|---|
-| `load_to_sqlite.py` | CSV 인코딩 재시도, 컬럼 정규화, SQLite upsert | 구현 |
-| `etl.py` | 서울 교통 API 요청·응답 변환 예시 | 엔드포인트·키·응답 구조 설정이 필요한 템플릿 |
-| `run_etl.ps1` | 수집·적재 실행, 로그 저장, 14일 지난 로그 정리 | Windows 실행 경로와 API 설정 필요 |
-| 대시보드의 시연 모드 | 최근 14일 AM 08시·PM 18시 샘플 생성 | [별도 저장소](https://github.com/cxo-ca/project-eda-dashboard)의 기능 |
+| 입력마다 다른 컬럼·인코딩 | 표준 컬럼, `timestamp/value`, 일부 한국어 컬럼을 정규화하고 UTF-8·CP949 등을 재시도 | [`normalize`, `read_csv_flex`](load_to_sqlite.py) |
+| 같은 날짜·시간의 반복 적재 | `(date, hour)` 유니크 키와 SQLite upsert로 기존 속도 갱신 | [`upsert`](load_to_sqlite.py) |
+| 실행 결과 확인 | 입력별 처리 행수, 신규 키 증가량, 전체 행수·날짜 범위 출력 | [`main`](load_to_sqlite.py) |
+| 환경·입력 차이에 따른 회귀 | 임시 CSV·실제 SQLite DB로 최초 적재, 갱신, 인코딩, 빈 결과 등 6개 테스트 | [`tests/`](tests/) |
 
-기본 상태에서 실제 공공데이터를 자동 수집하거나 샘플을 생성하지 않습니다. API를 설정하기 전에는 직접 준비한 CSV로 적재 과정을 확인하세요.
+분석 화면까지 이어지는 구성은 **CSV → 정규화 → SQLite → [Streamlit 대시보드](https://github.com/cxo-ca/project-eda-dashboard)**입니다. 이 저장소의 완성된 기능은 **CSV 적재기**이며, [`etl.py`](etl.py)의 공공데이터 API 수집기는 주소·키·응답 구조 설정이 필요한 템플릿입니다.
 
 ## 빠르게 실행하기
 
-모든 명령은 저장소 루트에서 실행합니다.
-
-### 1. 패키지 설치
+명령은 저장소 루트에서 실행합니다. 아래 CSV는 오늘 날짜로 만드는 **가상 시연 자료**입니다.
 
 ```bash
+git clone https://github.com/cxo-ca/project-etl-sql.git
+cd project-etl-sql
 python -m pip install -r requirements.txt
-```
-
-### 2. 입력 CSV 준비
-
-`data/` 폴더를 만들고 `data/sample.csv`에 아래 **시연용 값**을 저장합니다. 실제 관측 자료가 아닙니다.
-
-```csv
-date,hour,speed
-20261018,8,28.5
-20261018,18,22.0
-```
-
-입력 파일은 `data/*.csv`와 `data/raw/*.csv`에서 찾습니다. 다음 형식을 정규화합니다.
-
-- `date, hour, speed`
-- `timestamp, value` — 날짜·시간을 timestamp에서 분리
-- `일자, 시간/시간대, 속도` 등 일부 한국어 컬럼
-
-표준 날짜는 `YYYYMMDD`, 시간은 0–23의 정수, 속도는 km/h입니다. 현재 적재기는 도로·구간별 키를 보존하지 않으므로, 구간별 원자료는 먼저 날짜·시간별 대표 속도로 집계해야 합니다.
-
-### 3. DB 경로 선택 후 적재
-
-기본 출력은 `./data/app.db`입니다.
-
-```bash
+python -c "from pathlib import Path; from datetime import date; Path('data').mkdir(exist_ok=True); d=date.today().strftime('%Y%m%d'); Path('data/sample.csv').write_text(f'date,hour,speed\n{d},8,28.5\n{d},18,22.0\n', encoding='utf-8')"
 python load_to_sqlite.py
+python -m unittest discover -s tests -v
 ```
 
-대시보드 저장소가 같은 상위 폴더에 있을 때는 환경변수로 같은 DB를 지정합니다.
+처음 실행하는 빈 DB라면 `data/app.db`에 2행을 저장합니다. 같은 입력을 재실행하면 행수는 늘지 않고 같은 키의 속도가 갱신됩니다.
 
-Bash:
+## 입력·출력 사양
 
-```bash
-APP_DB_PATH=../project-eda-dashboard/data/app.db python load_to_sqlite.py
-```
+입력은 `data/*.csv`와 `data/raw/*.csv`입니다. 지원하는 대표적인 형식은 다음과 같습니다.
 
-PowerShell:
+| 입력 컬럼 | 변환 |
+|---|---|
+| `date, hour, speed` | 날짜의 하이픈 제거, 시간·속도 수치화 |
+| `timestamp, value` | timestamp에서 날짜·시간 분리, value를 속도로 변환 |
+| `일자, 시간/시간대, 속도` | 일부 한국어 컬럼을 표준명으로 변환 |
 
-```powershell
-$env:APP_DB_PATH = "../project-eda-dashboard/data/app.db"
-python load_to_sqlite.py
-```
-
-`.env.example`은 설정 값의 예시입니다. **현재 스크립트는 `.env`를 자동으로 읽지 않으므로** 위와 같이 셸 환경변수로 전달해야 합니다. 상대경로는 명령을 실행한 폴더 기준입니다.
-
-최초 실행 시 테이블·유니크 인덱스를 만들고, 동일한 `(date, hour)`가 있으면 속도를 갱신합니다.
-
-## SQLite 스키마와 확인 쿼리
+출력은 `logs_road(date TEXT, hour INTEGER, speed REAL)`입니다. 예상 형식은 날짜 `YYYYMMDD`, 시간 0–23, 속도 km/h입니다. 수치화할 수 없는 시간·속도 등은 제외하지만, 날짜의 유효성과 시간·속도 범위는 아직 검증하지 않습니다.
 
 ```sql
-CREATE TABLE IF NOT EXISTS logs_road (
-    date TEXT,
-    hour INTEGER,
-    speed REAL
-);
-CREATE UNIQUE INDEX IF NOT EXISTS ux_logs_road_date_hour
-ON logs_road(date, hour);
-
 SELECT date, hour, speed
 FROM logs_road
 ORDER BY date DESC, hour DESC
 LIMIT 10;
 ```
 
-같은 날짜·시간에 여러 행을 넣으면 마지막 행의 속도가 남습니다. 이는 구간별 평균을 계산하는 기능이 아닙니다.
-
-## 실제 API 수집기로 확장하기
-
-`etl.py`의 다음 항목을 사용할 데이터셋의 공식 명세에 맞춰 설정해야 합니다.
-
-1. `API_URL`과 `SERVICE_KEY`
-2. 요청 파라미터, 응답의 `data/list` 구조와 컬럼 매핑
-3. 페이지 종료 조건 — 현재 예시는 최대 5페이지만 시도
-4. 시간 값 정규화와 도로·구간별 자료의 집계 기준
-
-설정 후 실행하면 원본 CSV를 `data/raw/road_YYYYMMDD.csv`에 저장합니다.
-
-```bash
-python etl.py
-python load_to_sqlite.py
-```
-
-API 키를 코드에 넣은 채 커밋하지 마세요. 현재 수집기는 예외를 출력하고 종료하므로, 종료 코드만으로 수집 성공을 판단하지 말고 저장된 파일과 로그를 확인해야 합니다.
+**키는 도로·구간 단위가 아닌 `(date, hour)`입니다.** 같은 키의 여러 행은 마지막 속도로 덮어씁니다. 구간별 원자료는 먼저 날짜·시간별 대표값으로 집계해야 합니다.
 
 ## 대시보드 연결
 
 1. 이 저장소와 [project-eda-dashboard](https://github.com/cxo-ca/project-eda-dashboard)를 같은 상위 폴더에 준비합니다.
-2. `APP_DB_PATH`를 대시보드의 `data/app.db`로 지정하고 CSV를 적재합니다.
-3. 대시보드를 실행해 같은 DB 경로를 입력하고 **DB 불러오기**를 누릅니다.
-4. 조회 기간에 입력 자료의 날짜가 포함되어 있는지 확인합니다.
+2. 아래처럼 공통 DB에 먼저 CSV를 적재합니다. 실제 자료에는 기존 시연 DB와 다른 **새 DB 경로**를 사용하면 가상 샘플이 섞이는 일을 피할 수 있습니다.
+3. 대시보드를 실행하고 SQLite 경로를 `./data/traffic.db`로 입력한 뒤 **DB 불러오기**를 누릅니다.
 
-대시보드는 DB 또는 `logs_road`가 없으면 샘플을 생성합니다. 실제 자료를 확인하려면 먼저 적재를 끝내고 올바른 DB 경로를 선택하세요.
-
-## Windows 자동 실행
-
-`run_etl.ps1`은 현재 `$env:USERPROFILE\Desktop\project-etl-sql`로 이동합니다. 실제 위치에 맞춰 수정하고 API 설정과 수동 실행을 확인한 뒤 작업 스케줄러에 등록합니다. 로그는 `logs/etl_*.log`에 저장합니다.
-
-## 테스트
-
-적재기 회귀 테스트는 임시 CSV와 SQLite DB를 사용하며 네트워크에 연결하지 않습니다.
+Bash:
 
 ```bash
-python -m unittest discover -s tests -v
+APP_DB_PATH=../project-eda-dashboard/data/traffic.db python load_to_sqlite.py
 ```
 
-최초 적재, 동일 키 갱신, 폴더 없는 DB 파일명, CP949 입력·인코딩 대체 처리, 사용할 컬럼이 없는 입력을 확인합니다.
+PowerShell:
 
-## 폴더
+```powershell
+$env:APP_DB_PATH = '../project-eda-dashboard/data/traffic.db'
+python load_to_sqlite.py
+```
 
-| 경로 | 내용 |
-|---|---|
-| `etl.py` | 공공데이터 API 수집 템플릿 |
-| `load_to_sqlite.py` | CSV 정규화·SQLite 적재 |
-| `run_etl.ps1` | Windows 실행·로그 관리 |
-| `sql/analysis.sql` | 조회 쿼리 예시 |
-| `tests/` | 적재기 회귀 테스트 |
-| `data/` | 사용자가 준비한 입력·실행 시 생성되는 DB, 저장소에 미포함 |
+상대경로는 명령 실행 폴더 기준입니다. `.env.example`은 예시이며 스크립트는 `.env`를 자동으로 읽지 않습니다. 대시보드는 선택한 DB에 `logs_road`가 없으면 샘플을 생성하므로 **적재를 먼저 완료하고 같은 DB를 선택**해야 합니다.
 
-## 향후 개선
+## API 수집·자동 실행으로 확장하기
 
-실제 API 연동, 입력 값 범위 검증, 도로·구간별 집계 설계, 실패 시 종료 코드 처리와 수집·적재 품질 검증을 보완할 예정입니다.
+<details>
+<summary>템플릿 설정과 Windows 실행 안내</summary>
+
+[`etl.py`](etl.py)에서 데이터셋의 공식 명세에 맞춰 다음을 설정합니다.
+
+- `API_URL`, `SERVICE_KEY`, 요청 파라미터와 응답의 `data/list` 구조
+- 컬럼 매핑과 시간 값 정규화
+- 페이지 종료 조건: 현재 예시는 최대 5페이지
+- 도로·구간별 자료를 날짜·시간별로 집계할 기준
+
+설정 후 `python etl.py`로 `data/raw/road_YYYYMMDD.csv`를 만들고, `python load_to_sqlite.py`로 적재합니다. 현재 수집기는 예외를 출력하고 종료하므로 종료 코드만으로 성공을 판단하지 말고 저장 파일·로그를 확인해야 합니다. API 키는 커밋하지 않습니다.
+
+[`run_etl.ps1`](run_etl.ps1)은 수집·적재 실행, `logs/etl_*.log` 저장, 14일 지난 로그 정리를 수행합니다. 현재 작업 경로는 `$env:USERPROFILE\Desktop\project-etl-sql`로 고정되어 있으므로 수정이 필요합니다. API 설정과 수동 실행을 검증한 뒤 Windows 작업 스케줄러에 등록합니다.
+
+</details>
+
+## 검증·개선 범위
+
+- **검증:** 네트워크 없이 실행하는 [6개 적재기 회귀 테스트](tests/test_loader.py). 최초 적재·같은 키 갱신·부모 경로 없는 DB 파일명·CP949·인코딩 대체·사용할 컬럼 없는 입력을 확인합니다.
+- **다음 개선:** 실제 API 연동, 날짜·값 범위 검증, 도로별 키·집계 설계, 수집 실패의 종료 코드 처리와 적재 품질 점검.
+
